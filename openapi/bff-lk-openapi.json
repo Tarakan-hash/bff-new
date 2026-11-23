@@ -602,7 +602,7 @@
             }
           },
           "400": {
-            "description": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
+            "description": "Неизвестный тип согласия. Допустимы: PDN, CSI, ASSIGNMENT, NEWSLETTER",
             "content": {
               "application/json": {
                 "schema": {
@@ -610,7 +610,7 @@
                 },
                 "examples": {
                   "400-0": {
-                    "summary": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
+                    "summary": "Неизвестный тип согласия. Допустимы: PDN, CSI, ASSIGNMENT, NEWSLETTER",
                     "value": {
                       "message": "Некорректный тип согласия"
                     }
@@ -3397,7 +3397,7 @@
             }
           },
           "400": {
-            "description": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
+            "description": "Неизвестный тип согласия. Допустимы: PDN, CSI, ASSIGNMENT, NEWSLETTER",
             "content": {
               "application/json": {
                 "schema": {
@@ -3405,7 +3405,7 @@
                 },
                 "examples": {
                   "400-0": {
-                    "summary": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
+                    "summary": "Неизвестный тип согласия. Допустимы: PDN, CSI, ASSIGNMENT, NEWSLETTER",
                     "value": {
                       "message": "Некорректный тип согласия"
                     }
