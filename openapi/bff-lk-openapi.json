@@ -575,7 +575,8 @@
               "enum": [
                 "PDN",
                 "CSI",
-                "ASSIGNMENT"
+                "ASSIGNMENT",
+                "NEWSLETTER"
               ]
             }
           }
@@ -601,7 +602,7 @@
             }
           },
           "400": {
-            "description": "Тип не PDN, CSI или ASSIGNMENT",
+            "description": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
             "content": {
               "application/json": {
                 "schema": {
@@ -609,7 +610,7 @@
                 },
                 "examples": {
                   "400-0": {
-                    "summary": "Тип не PDN, CSI или ASSIGNMENT",
+                    "summary": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
                     "value": {
                       "message": "Некорректный тип согласия"
                     }
@@ -3382,7 +3383,8 @@
               "enum": [
                 "PDN",
                 "CSI",
-                "ASSIGNMENT"
+                "ASSIGNMENT",
+                "NEWSLETTER"
               ]
             }
           }
@@ -3395,7 +3397,7 @@
             }
           },
           "400": {
-            "description": "Тип не PDN, CSI или ASSIGNMENT",
+            "description": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
             "content": {
               "application/json": {
                 "schema": {
@@ -3403,7 +3405,7 @@
                 },
                 "examples": {
                   "400-0": {
-                    "summary": "Тип не PDN, CSI или ASSIGNMENT",
+                    "summary": "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER",
                     "value": {
                       "message": "Некорректный тип согласия"
                     }
@@ -4706,7 +4708,8 @@
             "enum": [
               "PDN",
               "CSI",
-              "ASSIGNMENT"
+              "ASSIGNMENT",
+              "NEWSLETTER"
             ],
             "example": "PDN"
           },

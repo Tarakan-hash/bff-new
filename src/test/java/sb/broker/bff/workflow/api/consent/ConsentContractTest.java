@@ -35,4 +35,15 @@ class ConsentContractTest {
         assertThat(new UserConsent("ПДН", true, true, null))
                 .isEqualTo(new UserConsent("ПДН", null, true, true, null, null));
     }
+
+    @Test
+    void temporalPayloadKeepsNewsletterType() {
+        var source = new SubmitUserConsentsInput("user@example.com", java.util.List.of(ConsentType.NEWSLETTER));
+        var converter = DefaultDataConverter.newDefaultInstance();
+
+        var result = converter.fromPayloads(0, converter.toPayloads(source),
+                SubmitUserConsentsInput.class, SubmitUserConsentsInput.class);
+
+        assertThat(result).isEqualTo(source);
+    }
 }

@@ -42,7 +42,7 @@ public class ConsentController {
     @Operation(summary = "Файл согласия", description = "Доступен без обязательного согласия: нужен в поп-апе")
     @ApiResponse(responseCode = "200", description = "Файл; Content-Type из CRM или application/octet-stream",
             content = @Content(mediaType = "application/octet-stream"))
-    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Тип не PDN, CSI или ASSIGNMENT")
+    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER")
     @ErrorExample(status = "404", message = "error.consent-file-not-found", when = "Файла нет")
     @GetMapping("/{type}/file")
     public ResponseEntity<byte[]> file(@PathVariable ConsentType type) {
@@ -65,7 +65,7 @@ public class ConsentController {
 
     @Operation(summary = "Отозвать согласие", description = "Отзыв уже отозванного согласия — тоже 200")
     @ApiResponse(responseCode = "200", description = "Согласие отозвано; тела нет")
-    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Тип не PDN, CSI или ASSIGNMENT")
+    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Тип не PDN, CSI, ASSIGNMENT или NEWSLETTER")
     @ConsentsRequired
     @PostMapping("/{type}/recall")
     public ResponseEntity<Void> recall(@PathVariable ConsentType type) {
