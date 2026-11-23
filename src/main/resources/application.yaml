@@ -1,0 +1,183 @@
+spring:
+  application:
+    name: bff-lk
+  threads:
+    virtual:
+      enabled: true
+  messages:
+    basename: messages
+    fallback-to-system-locale: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # iss токена — публичный адрес realm, с которым браузер логинится через auth-backend
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:https://dev-keycloak.broker-sb.ru/realms/lk}
+          # откуда брать ключи подписи; отдельно от issuer, чтобы в кластере ходить во внутренний адрес Keycloak
+          # (iss при этом остаётся публичным). Без discovery: старт и первый запрос не зависят от .well-known
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:${KEYCLOAK_ISSUER_URI:https://dev-keycloak.broker-sb.ru/realms/lk}/protocol/openid-connect/certs}
+          jws-algorithms: ${KEYCLOAK_JWS_ALGORITHMS:RS256}
+          audiences: ${KEYCLOAK_AUDIENCES:account}
+  temporal:
+    namespace: ${TEMPORAL_NAMESPACE:dev}  # namespace окружения: dev, psi или prod — один у всех сервисов
+    connection:
+      target: ${TEMPORAL_URL:temporal.cce-apps.dev.broker-sb.tech:80}
+
+  lifecycle:
+    # дать открытым SSE и ожиданиям workflow завершиться при раскатке
+    timeout-per-shutdown-phase: ${BFF_SHUTDOWN_TIMEOUT:30s}
+server:
+  port: 8080
+  shutdown: graceful
+  servlet:
+    context-path: ${BFF_CONTEXT_PATH:/bff-lk}
+
+management:
+  metrics:
+    tags:
+      application: ${custom.micrometer.application-name:bff-lk}
+      environment: ${custom.micrometer.environment:local}
+      hostname: ${HOSTNAME:localhost}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        # готовность зависит от Temporal, живость — нет: сбой Temporal не должен перезапускать поды
+        readiness:
+          include: readinessState,temporal
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: ${BFF_OPENAPI_ENABLED:true}
+  swagger-ui:
+    enabled: ${BFF_OPENAPI_ENABLED:true}
+
+# общие теги метрик (Spring Boot Actuator + Micrometer)
+custom:
+  micrometer:
+    application-name: bff-lk
+    environment: ${BFF_ENVIRONMENT:local}
+
+sb:
+  broker:
+    security:
+      email-claim: ${bff.security.email-claim:email}
+      public-paths:
+        - /actuator/health/**
+        - /actuator/info
+        - /actuator/prometheus
+        - /v3/api-docs/**
+        - /swagger-ui.html
+        - /api/v1/regions
+    temporal:
+      encryption:
+        mode: ${TEMPORAL_ENCRYPTION_MODE:DISABLED}
+        active-key-id: ${TEMPORAL_ENCRYPTION_KEY_ID:}
+        keys:
+          k1: ${TEMPORAL_ENCRYPTION_KEY_K1:}
+
+bff:
+  temporal:
+    defaults:
+      # очередь worker'а workflow-definition-service
+      task-queue: ${BFF_WORKFLOW_TASK_QUEUE:workflow-definition-tq}
+      execution-timeout: 1m
+      # сколько HTTP-запрос ждёт результат синхронного workflow
+      await-timeout: ${BFF_WORKFLOW_AWAIT_TIMEOUT:30s}
+    workflows:
+      CheckLkAccessWorkflow:
+        id-prefix: lk-access-
+      ReadProductCatalogWorkflow:
+        id-prefix: lk-catalog-
+      ReadUserConsentsWorkflow:
+        id-prefix: lk-consents-read-
+      ReadConsentFileWorkflow:
+        id-prefix: lk-consent-file-
+      SubmitUserConsentsWorkflow:
+        id-prefix: lk-consents-submit-
+      RecallUserConsentWorkflow:
+        id-prefix: lk-consent-recall-
+      SubmitAccountLeadWorkflow:
+        id-prefix: lk-lead-
+        execution-timeout: 10m
+        # по истечении ожидания POST /leads отвечает 204
+        await-timeout: ${BFF_LEAD_AWAIT_TIMEOUT:60s}
+      InitiateCompanyProfileWorkflow:
+        id-prefix: lk-company-profile-
+        execution-timeout: 10m
+        await-timeout: 5m
+      InitiateRiskProfileWorkflow:
+        # один выполняющийся расчёт на ИНН: lk-risk-profile-<ИНН>
+        id-prefix: lk-risk-profile-
+        execution-timeout: 30m
+        await-timeout: 15m
+      InitiateAccountDmsCalculationWorkflow:
+        # bff-идентификатор: префикс, HMAC владельца, UUID
+        id-prefix: lk-calc-dms-
+        # 24 часа на выбор предложения после расчёта
+        execution-timeout: 26h
+        # POST ждёт «ворота» 60 секунд, затем 204
+        await-timeout: ${BFF_CALCULATION_GATE_TIMEOUT:60s}
+      InitiateAccountKaskoCalculationWorkflow:
+        id-prefix: lk-calc-kasko-
+        execution-timeout: 26h
+        await-timeout: ${BFF_CALCULATION_GATE_TIMEOUT:60s}
+      InitiateAccountOsagoCalculationWorkflow:
+        id-prefix: lk-calc-osago-
+        execution-timeout: 26h
+        await-timeout: ${BFF_CALCULATION_GATE_TIMEOUT:60s}
+      SyncPoliciesWorkflow:
+        # один выполняющийся экземпляр на ИНН: lk-policy-sync-<ИНН>
+        id-prefix: lk-policy-sync-
+        execution-timeout: 30m
+        await-timeout: 15m
+      SyncOrgPoliciesWorkflow:
+        # один выполняющийся экземпляр на ИНН: lk-policy-sync-<ИНН>
+        id-prefix: lk-policy-sync-
+        execution-timeout: 30m
+        await-timeout: 15m
+
+  # Локальные кэши пода; ttl 0 — выключено
+  cache:
+    access:
+      # как кэш согласий в personal-account-backend
+      ttl: ${BFF_ACCESS_CACHE_TTL:10s}
+      max-size: 100000
+    catalog:
+      ttl: ${BFF_CATALOG_CACHE_TTL:5m}
+      max-size: 10000
+
+  sse:
+    # дольше любого await-timeout сессий SSE
+    timeout: 20m
+    # комментарий в молчащий поток: меньше read timeout ingress/балансировщиков (ingress-nginx — 60s)
+    heartbeat: ${BFF_SSE_HEARTBEAT:15s}
+
+  calculation:
+    # секрет HMAC владельца в workflowId предрасчёта: один на все поды и ЦОД, из секрет-хранилища
+    owner-key: ${BFF_CALCULATION_OWNER_KEY:local-only-calculation-owner-key}
+    # GET ждёт предложений (меньше bff.sse.timeout)
+    preview-timeout: ${BFF_CALCULATION_PREVIEW_TIMEOUT:15m}
+    # POST выбора ждёт итог, затем 204
+    selection-timeout: ${BFF_CALCULATION_SELECTION_TIMEOUT:60s}
+
+  consents:
+    default-file-content-type: application/octet-stream
+
+  leads:
+    # открытые сценарии; policy — продление: обязательны productId и policyNumber
+    scenarios:
+      CONTACT_BROKER:
+        policy: false
+      POLICY_PROLONGATION:
+        policy: true
+      PRODUCT_CATALOG:
+        policy: false
+      RECOMMENDATION:
+        policy: false

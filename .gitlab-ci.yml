@@ -1,0 +1,4 @@
+include:
+  - project: platform/gitlab-as-code
+    ref: master
+    file: /pipelines/java.yml

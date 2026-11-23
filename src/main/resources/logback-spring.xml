@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <springProperty scope="context" name="appName" source="spring.application.name"/>
+
+    <conversionRule conversionWord="shortEx"
+                    class="net.logstash.logback.stacktrace.ShortenedThrowableConverter"/>
+
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <pattern>
+                    <pattern>
+                        {
+                        "level":
+                        "%replace(%replace(%replace(%replace(%replace(%level){'TRACE','trace'}){'DEBUG','debug'}){'INFO','info'}){'WARN','warn'}){'ERROR','error'}",
+                        "message": "%message%replace(%shortEx{15,full,2048,rootFirst,^org\\.apache\\.catalina\\..*,^org\\.apache\\.coyote\\..*,^org\\.apache\\.tomcat\\..*,^org\\.springframework\\.security\\..*,^org\\.springframework\\.web\\.filter\\..*,^org\\.springframework\\.web\\.servlet\\..*,^jdk\\.internal\\.reflect\\..*,^java\\.lang\\.reflect\\.Method\\.invoke.*}){'^(?!$)','\n'}",
+                        "server-name": "${HOSTNAME:-unknown}",
+                        "service-name": "%replace(${appName}){'[_\\s]+','-'}",
+                        "trace-id": "%X{trace-id}"
+                        }
+                    </pattern>
+                </pattern>
+                <timestamp>
+                    <fieldName>time-generating</fieldName>
+                    <pattern>yyyy-MM-dd'T'HH:mm:ssXXX</pattern>
+                    <timeZone>${LOGGING_TIME_ZONE:-Europe/Moscow}</timeZone>
+                </timestamp>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON_CONSOLE"/>
+    </root>
+</configuration>

@@ -1,0 +1,10 @@
+# Локальный запуск: dev-сервер Temporal с UI.
+#   docker compose up -d
+#   UI: http://localhost:8233, gRPC: localhost:7233
+services:
+  temporal:
+    image: temporalio/temporal:1.8.3
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--namespace", "quotation-calculation"]
+    ports:
+      - "7233:7233"
+      - "8233:8233"

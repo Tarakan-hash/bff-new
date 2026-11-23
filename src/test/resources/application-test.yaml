@@ -1,0 +1,17 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:0/realms/test
+  temporal:
+    connection:
+      target: localhost:0
+
+# кэши включает только CacheApiTest: общий контекст тестов не должен переносить допуск между тестами
+bff:
+  cache:
+    access:
+      ttl: 0s
+    catalog:
+      ttl: 0s

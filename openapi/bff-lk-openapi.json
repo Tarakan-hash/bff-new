@@ -1,0 +1,6320 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "bff-lk",
+    "description": "BFF личного кабинета",
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080/bff-lk",
+      "description": "Generated server url"
+    }
+  ],
+  "security": [
+    {
+      "bearerJwt": []
+    }
+  ],
+  "paths": {
+    "/api/v1/risk-profile-recommendations": {
+      "post": {
+        "tags": [
+          "Риск-профиль"
+        ],
+        "summary": "Запустить расчёт риск-профиля и рекомендаций",
+        "description": "Пока расчёт этого ИНН идёт, повтор возвращает тот же workflowId. Профиль — следующим GET",
+        "operationId": "initiate",
+        "responses": {
+          "202": {
+            "description": "Расчёт запущен или уже идёт",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/RiskProfileAcceptedDTO"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/policies": {
+      "get": {
+        "tags": [
+          "Полисы"
+        ],
+        "summary": "Список полисов (SSE)",
+        "description": "Поток text/event-stream с одним событием, затем закрывается. complete — массив полисов (в том числе пустой);\nerror — {message}: «Нет полисов для отображения» или «Внутренняя ошибка сервиса».\nДопуск и запуск синхронизации — до открытия потока: 401, 500 и consents_required — обычный JSON.",
+        "operationId": "policies",
+        "responses": {
+          "200": {
+            "description": "Поток открыт; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PolicyDTO"
+                  }
+                },
+                "examples": {
+                  "complete": {
+                    "description": "complete",
+                    "value": "event:complete\ndata:[]"
+                  },
+                  "error": {
+                    "description": "error",
+                    "value": "event:error\ndata:{\"message\":\"Нет полисов для отображения\"}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Полисы"
+        ],
+        "summary": "Запустить синхронизацию полисов",
+        "description": "Свежая копия и уже идущая синхронизация — тоже 202. Список приходит следующим GET",
+        "operationId": "importPolicies",
+        "responses": {
+          "202": {
+            "description": "Синхронизация запущена или уже идёт",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedDTO"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/leads": {
+      "post": {
+        "tags": [
+          "Лиды"
+        ],
+        "summary": "Заявка на лид",
+        "description": "Создание и обновление открытого лида для фронта одинаковы",
+        "operationId": "submit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountLeadRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Команда не завершилась за время ожидания; повторный POST — новый прогон",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Тело не разобрано, нет fio, phone, subtype; у продления productId не целое или нет policyNumber",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Тело не разобрано, нет fio, phone, subtype; у продления productId не целое или нет policyNumber",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Сценарий закрыт, у CONTACT_BROKER поля полиса, у продления нет productId; region_not_found; gosb_not_found; product_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "422-0": {
+                    "summary": "Сценарий закрыт, у CONTACT_BROKER поля полиса, у продления нет productId",
+                    "value": {
+                      "message": "Сценарий создания лида недоступен"
+                    }
+                  },
+                  "422-1": {
+                    "summary": "region_not_found",
+                    "value": {
+                      "outcome": "region_not_found",
+                      "message": "Регион компании не найден"
+                    }
+                  },
+                  "422-2": {
+                    "summary": "gosb_not_found",
+                    "value": {
+                      "outcome": "gosb_not_found",
+                      "message": "ГОСБ по региону компании не найден"
+                    }
+                  },
+                  "422-3": {
+                    "summary": "product_not_found",
+                    "value": {
+                      "outcome": "product_not_found",
+                      "message": "Продукт не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "accepted; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "accepted",
+                    "value": {
+                      "outcome": "accepted"
+                    }
+                  },
+                  "200-1": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consents": {
+      "get": {
+        "tags": [
+          "Согласия"
+        ],
+        "summary": "Текущие согласия пользователя",
+        "description": "Отсутствие обязательного согласия метод не закрывает: по ответу фронт показывает поп-ап",
+        "operationId": "consents",
+        "responses": {
+          "200": {
+            "description": "Согласия CRM",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserConsentDTO"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Согласия"
+        ],
+        "summary": "Передать в CRM отмеченные согласия",
+        "description": "Доступен без обязательного согласия. В CRM уходят только consent = true",
+        "operationId": "submit_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ConsentDecisionDTO"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "CRM приняла факты; тела нет"
+          },
+          "400": {
+            "description": "У PDN нет consent = true; Тип не указан или повторён; Тело не разобрано",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "У PDN нет consent = true",
+                    "value": {
+                      "message": "Нет согласия на обработку персональных данных"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Тип не указан или повторён",
+                    "value": {
+                      "message": "Список согласий не разобран: тип не указан, не поддерживается или повторяется"
+                    }
+                  },
+                  "400-2": {
+                    "summary": "Тело не разобрано",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consents/{type}/recall": {
+      "post": {
+        "tags": [
+          "Согласия"
+        ],
+        "summary": "Отозвать согласие",
+        "description": "Отзыв уже отозванного согласия — тоже 200",
+        "operationId": "recall",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PDN",
+                "CSI",
+                "ASSIGNMENT"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Согласие отозвано; тела нет; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Тип не PDN, CSI или ASSIGNMENT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Тип не PDN, CSI или ASSIGNMENT",
+                    "value": {
+                      "message": "Некорректный тип согласия"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profile": {
+      "post": {
+        "tags": [
+          "Карточка компании"
+        ],
+        "summary": "Запустить обновление карточки компании",
+        "description": "Карточка приходит следующим GET",
+        "operationId": "initiate_1",
+        "responses": {
+          "202": {
+            "description": "Обновление запущено",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompanyProfileAcceptedDTO"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/osago": {
+      "post": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Создать предрасчёт ОСАГО",
+        "description": "Запускает workflow и ждёт «ворота» (допуск, расчёт или холодная копия, лид) не дольше 60 секунд.\nПредложения — следующим GET. Повтор после 204 запускает новый расчёт.",
+        "operationId": "preview",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountOsagoPreviewRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Расчёт идёт или найдена холодная копия",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "За 60 секунд ворота не опубликованы",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Тело не принято, переданы email или consents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Тело не принято, переданы email или consents",
+                    "value": {
+                      "message": "Тело запроса не принято"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "gosb_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "422-0": {
+                    "summary": "gosb_not_found",
+                    "value": {
+                      "outcome": "gosb_not_found",
+                      "message": "ГОСБ по региону не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/osago/special-vehicle": {
+      "post": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Создать предрасчёт ОСАГО спецтехники",
+        "description": "Тот же workflow и GET, что у обычного ОСАГО. Ждёт «ворота» не дольше 60 секунд.",
+        "operationId": "previewSpecialVehicle",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountOsagoSpecialVehicleRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Расчёт идёт или найдена холодная копия",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "За 60 секунд ворота не опубликованы",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Тело не принято, переданы email или consents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Тело не принято, переданы email или consents",
+                    "value": {
+                      "message": "Тело запроса не принято"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "gosb_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "422-0": {
+                    "summary": "gosb_not_found",
+                    "value": {
+                      "outcome": "gosb_not_found",
+                      "message": "ГОСБ по региону не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/offer": {
+      "post": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Выбрать предложение предрасчёта",
+        "description": "Записывает выбор в лид предрасчёта. Новый расчёт не запускается. Повтор того же предложения второе событие\nCRM не пишет; другое предложение в течение 24 часов заменяет комментарий лида.",
+        "operationId": "select",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectAccountOfferRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Выбор записан; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "За 60 секунд итога нет или предложения ещё не готовы; фронт повторяет запрос"
+          },
+          "400": {
+            "description": "workflowId не передан; offerId не передан; Предложения нет в расчёте; Предложение не success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId не передан",
+                    "value": {
+                      "message": "Идентификатор операции не передан"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "offerId не передан",
+                    "value": {
+                      "message": "Идентификатор предложения не передан"
+                    }
+                  },
+                  "400-2": {
+                    "summary": "Предложения нет в расчёте",
+                    "value": {
+                      "message": "Предложение не найдено"
+                    }
+                  },
+                  "400-3": {
+                    "summary": "Предложение не success",
+                    "value": {
+                      "message": "Предложение нельзя выбрать"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Расчёт не найден, чужой, закрыт или завершился отказом до предложений",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Расчёт не найден, чужой, закрыт или завершился отказом до предложений",
+                    "value": {
+                      "message": "Выбор предложения недоступен"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/kasko": {
+      "post": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Создать предрасчёт КАСКО",
+        "description": "Запускает workflow и ждёт «ворота» (допуск, расчёт или холодная копия, лид) не дольше 60 секунд.\nПредложения — следующим GET. Повтор после 204 запускает новый расчёт.",
+        "operationId": "preview_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountKaskoPreviewRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Расчёт идёт или найдена холодная копия",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "За 60 секунд ворота не опубликованы",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Тело не принято, переданы email или consents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Тело не принято, переданы email или consents",
+                    "value": {
+                      "message": "Тело запроса не принято"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "gosb_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "422-0": {
+                    "summary": "gosb_not_found",
+                    "value": {
+                      "outcome": "gosb_not_found",
+                      "message": "ГОСБ по региону не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/dms/preview": {
+      "post": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Создать предрасчёт ДМС",
+        "description": "Запускает workflow и ждёт «ворота» (допуск, расчёт или холодная копия, лид) не дольше 60 секунд.\nПредложения — следующим GET. Повтор после 204 запускает новый расчёт.",
+        "operationId": "preview_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountDmsPreviewRequestDTO"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Расчёт идёт или найдена холодная копия",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "За 60 секунд ворота не опубликованы",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedPreviewDTO"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Тело не принято, переданы email или consents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Тело не принято, переданы email или consents",
+                    "value": {
+                      "message": "Тело запроса не принято"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "gosb_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "422-0": {
+                    "summary": "gosb_not_found",
+                    "value": {
+                      "outcome": "gosb_not_found",
+                      "message": "ГОСБ по региону не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/use_purpose_types": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Цели использования транспортного средства",
+        "operationId": "vehicleUsePurposeTypes",
+        "parameters": [
+          {
+            "name": "productType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(kasko|osago)$"
+            }
+          },
+          {
+            "name": "isSpecTech",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(true|false)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Параметры цели использования некорректны"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/use_purpose_types/{usePurposeTypeId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Цель использования транспортного средства",
+        "operationId": "vehicleUsePurposeType",
+        "parameters": [
+          {
+            "name": "usePurposeTypeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор цели использования не является UUID"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Цель использования транспортного средства не найдена"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/models/{markId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Модели марки транспортного средства",
+        "operationId": "vehicleModels",
+        "parameters": [
+          {
+            "name": "markId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d{1,10}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор марки не является целым числом"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Марка транспортного средства не найдена"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/marks": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Марки транспортных средств",
+        "operationId": "vehicleMarks",
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/documents": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Типы документов транспортного средства",
+        "operationId": "vehicleDocuments",
+        "parameters": [
+          {
+            "name": "isSpecTech",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(true|false)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Признак спецтехники не является логическим значением"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/documents/{documentId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Тип документа транспортного средства",
+        "operationId": "vehicleDocument",
+        "parameters": [
+          {
+            "name": "documentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор типа документа не является UUID"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Тип документа транспортного средства не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/categories": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Категории транспортных средств",
+        "operationId": "vehicleCategories",
+        "parameters": [
+          {
+            "name": "isSpecTech",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(true|false)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Признак спецтехники не является логическим значением"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/vehicle/categories/{categoryId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Категория транспортного средства",
+        "operationId": "vehicleCategory",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+            }
+          },
+          {
+            "name": "full",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(true|false)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор категории или флаг full некорректен"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Категория транспортного средства не найдена"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risk-profile-recommendations/{workflowId}": {
+      "get": {
+        "tags": [
+          "Риск-профиль"
+        ],
+        "summary": "Риск-профиль и рекомендации (SSE)",
+        "description": "Поток text/event-stream с одним событием, затем закрывается. complete — профиль;\nerror — {message}: текст исхода расчёта или «Внутренняя ошибка сервиса».\nДопуск проверяется до открытия потока: 401, 500 и consents_required — обычный JSON.",
+        "operationId": "stream",
+        "parameters": [
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Поток открыт; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/RiskProfileDTO"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorDTO"
+                    }
+                  ]
+                },
+                "examples": {
+                  "complete": {
+                    "description": "complete",
+                    "value": "event:complete\ndata:{\"inn\":\"7707083893\",\"companyName\":\"Пример\"}"
+                  },
+                  "error": {
+                    "description": "error",
+                    "value": "event:error\ndata:{\"message\":\"Нет риск-профиля для отображения\"}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "workflowId пустой",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId пустой",
+                    "value": {
+                      "message": "Идентификатор операции не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/risk-profile-recommendations/": {
+      "get": {
+        "tags": [
+          "Риск-профиль"
+        ],
+        "summary": "Идентификатор сессии не передан",
+        "operationId": "streamWithoutId",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "workflowId не передан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId не передан",
+                    "value": {
+                      "message": "Идентификатор операции не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/regions": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Регионы",
+        "operationId": "regions",
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/regions/{regionCode}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Регион по коду",
+        "operationId": "region",
+        "parameters": [
+          {
+            "name": "regionCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d{1,10}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Код региона не является целым числом"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Регион не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/regions/gosb/{gosbId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Регионы по ГОСБ",
+        "operationId": "regionByGosb",
+        "parameters": [
+          {
+            "name": "gosbId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "minLength": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор ГОСБ не передан"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "ГОСБ не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/profile/info": {
+      "get": {
+        "tags": [
+          "Текущий пользователь"
+        ],
+        "summary": "Данные пользователя из JWT",
+        "description": "Только данные проверенного токена актуальные на момент его выдачи.",
+        "operationId": "info",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileInfoDTO"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Продукты брокера",
+        "operationId": "products",
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/insurance_company": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Страховые компании",
+        "operationId": "insuranceCompanies",
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/insurance_company/{insuranceCompanyId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Страховая компания",
+        "operationId": "insuranceCompany",
+        "parameters": [
+          {
+            "name": "insuranceCompanyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d{1,10}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор страховой компании не является целым числом"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Страховая компания не найдена"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/insurance_company/not_integrated": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Неинтегрированные страховые компании",
+        "operationId": "notIntegratedInsuranceCompanies",
+        "parameters": [
+          {
+            "name": "productType",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^(dms|kasko|osago)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Тип страхового продукта не передан или некорректен"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/insurance_categories": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Категории страхования",
+        "operationId": "insuranceCategories",
+        "parameters": [
+          {
+            "name": "includeProducts",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(true|false)$"
+            }
+          },
+          {
+            "name": "showInCatalog",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(true|false)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Признак продуктов категории не является логическим значением"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/insurance_categories/{categoryId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Категория страхования с продуктами",
+        "operationId": "insuranceCategory",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d{1,10}$"
+            }
+          },
+          {
+            "name": "showInCategory",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(true|false)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор категории страхования не является целым числом"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Категория страхования не найдена"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/gosb/{regionCode}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "ГОСБ региона",
+        "operationId": "gosb",
+        "parameters": [
+          {
+            "name": "regionCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d{1,10}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Код региона не является целым числом"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Регион не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consents/{type}/file": {
+      "get": {
+        "tags": [
+          "Согласия"
+        ],
+        "summary": "Файл согласия",
+        "description": "Доступен без обязательного согласия: нужен в поп-апе",
+        "operationId": "file",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PDN",
+                "CSI",
+                "ASSIGNMENT"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Файл; Content-Type из CRM или application/octet-stream",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "400": {
+            "description": "Тип не PDN, CSI или ASSIGNMENT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Тип не PDN, CSI или ASSIGNMENT",
+                    "value": {
+                      "message": "Некорректный тип согласия"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Файла нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Файла нет",
+                    "value": {
+                      "message": "Файл согласия не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profile/{workflowId}": {
+      "get": {
+        "tags": [
+          "Карточка компании"
+        ],
+        "summary": "Карточка компании (SSE)",
+        "description": "Поток text/event-stream с одним событием, затем закрывается. complete — карточка;\nerror — {code, message}: SESSION_NOT_FOUND, COMPANY_NOT_FOUND, WORKFLOW_FAILED, INTERNAL_ERROR, INTERNAL_FALLBACK.\nДопуск проверяется до открытия потока: 401, 500 и consents_required — обычный JSON.",
+        "operationId": "stream_1",
+        "parameters": [
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Поток открыт; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/CompanyProfileResponseDTO"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CompanyProfileErrorDTO"
+                    }
+                  ]
+                },
+                "examples": {
+                  "complete": {
+                    "description": "complete",
+                    "value": "event:complete\ndata:{\"inn\":\"7706810730\",\"name\":\"ООО «Пример»\"}"
+                  },
+                  "error": {
+                    "description": "error",
+                    "value": "event:error\ndata:{\"code\":\"COMPANY_NOT_FOUND\",\"message\":\"Компания с указанным ИНН не найдена в системе CRM.\"}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "workflowId пустой",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId пустой",
+                    "value": {
+                      "message": "Идентификатор операции не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/company-profile/": {
+      "get": {
+        "tags": [
+          "Карточка компании"
+        ],
+        "summary": "Идентификатор сессии не передан",
+        "operationId": "streamWithoutId_1",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "workflowId не передан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId не передан",
+                    "value": {
+                      "message": "Идентификатор операции не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/city": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Города",
+        "operationId": "cities",
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/city/{kladrId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Город по КЛАДР",
+        "operationId": "city",
+        "parameters": [
+          {
+            "name": "kladrId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 13,
+              "minLength": 13
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "КЛАДР не состоит из 13 символов"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Город не найден"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/osago/{workflowId}": {
+      "get": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Предрасчёт ОСАГО (SSE)",
+        "description": "Поток text/event-stream с одним событием для обычного ОСАГО и спецтехники. complete — предложения без пересчёта\nполей; error — «Расчёт не найден» или «Внутренняя ошибка сервиса».",
+        "operationId": "stream_2",
+        "parameters": [
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Поток открыт; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/OsagoPreviewResponseDTO"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorDTO"
+                    }
+                  ]
+                },
+                "examples": {
+                  "complete": {
+                    "description": "complete",
+                    "value": "event:complete\ndata:{\"calculationId\":\"calc-1\",\"offers\":[]}"
+                  },
+                  "error": {
+                    "description": "error",
+                    "value": "event:error\ndata:{\"message\":\"Расчёт не найден\"}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "workflowId пустой",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId пустой",
+                    "value": {
+                      "message": "Идентификатор предрасчёта не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/osago/": {
+      "get": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Идентификатор предрасчёта не передан",
+        "operationId": "streamWithoutId_2",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "workflowId не передан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId не передан",
+                    "value": {
+                      "message": "Идентификатор предрасчёта не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/kasko/{workflowId}": {
+      "get": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Предрасчёт КАСКО (SSE)",
+        "description": "Поток text/event-stream с одним событием. complete — предложения без пересчёта полей (пустой массив, если\nрасчёт КАСКО не запускался); error — «Расчёт не найден» или «Внутренняя ошибка сервиса».",
+        "operationId": "stream_3",
+        "parameters": [
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Поток открыт; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/KaskoPreviewResponseDTO"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorDTO"
+                    }
+                  ]
+                },
+                "examples": {
+                  "complete": {
+                    "description": "complete",
+                    "value": "event:complete\ndata:{\"calculationId\":\"calc-1\",\"offers\":[]}"
+                  },
+                  "error": {
+                    "description": "error",
+                    "value": "event:error\ndata:{\"message\":\"Расчёт не найден\"}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "workflowId пустой",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId пустой",
+                    "value": {
+                      "message": "Идентификатор предрасчёта не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/kasko/": {
+      "get": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Идентификатор предрасчёта не передан",
+        "operationId": "streamWithoutId_3",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "workflowId не передан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId не передан",
+                    "value": {
+                      "message": "Идентификатор предрасчёта не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/dms/{workflowId}": {
+      "get": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Предрасчёт ДМС (SSE)",
+        "description": "Поток text/event-stream с одним событием. complete — страница предложений и сводки; error — «Расчёт не найден»\nили «Внутренняя ошибка сервиса». Допуск и параметры проверяются до открытия потока.",
+        "operationId": "stream_4",
+        "parameters": [
+          {
+            "name": "workflowId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortBy",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sortDirection",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "options",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Поток открыт; Нет обязательного согласия; действие не выполнено",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DmsPreviewResponseDTO"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorDTO"
+                    }
+                  ]
+                },
+                "examples": {
+                  "complete": {
+                    "description": "complete",
+                    "value": "event:complete\ndata:{\"calculationId\":\"calc-1\",\"offers\":[],\"summaryCities\":[],\"summary\":[]}"
+                  },
+                  "error": {
+                    "description": "error",
+                    "value": "event:error\ndata:{\"message\":\"Расчёт не найден\"}"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutcomeDTO"
+                },
+                "examples": {
+                  "200-0": {
+                    "summary": "Нет обязательного согласия; действие не выполнено",
+                    "value": {
+                      "outcome": "consents_required",
+                      "message": "Требуется согласие"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметры отбора некорректны; workflowId пустой",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметры отбора некорректны",
+                    "value": {
+                      "message": "Параметры отбора предрасчёта некорректны"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "workflowId пустой",
+                    "value": {
+                      "message": "Идентификатор предрасчёта не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calculation/dms/": {
+      "get": {
+        "tags": [
+          "Предрасчёты"
+        ],
+        "summary": "Идентификатор предрасчёта не передан",
+        "operationId": "streamWithoutId_4",
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "400": {
+            "description": "workflowId не передан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "workflowId не передан",
+                    "value": {
+                      "message": "Идентификатор предрасчёта не передан"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/age_group": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Возрастные группы",
+        "operationId": "ageGroups",
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/age_group/{ageGroupId}": {
+      "get": {
+        "tags": [
+          "Справочники"
+        ],
+        "summary": "Возрастная группа",
+        "operationId": "ageGroup",
+        "parameters": [
+          {
+            "name": "ageGroupId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^-?\\d{1,10}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Ответ справочника Product Catalog без изменений",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Параметр некорректен; Product Catalog отверг параметры",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "400-0": {
+                    "summary": "Параметр некорректен",
+                    "value": {
+                      "message": "Идентификатор возрастной группы не является целым числом"
+                    }
+                  },
+                  "400-1": {
+                    "summary": "Product Catalog отверг параметры",
+                    "value": {
+                      "message": "Запрос не разобран"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Записи нет",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "404-0": {
+                    "summary": "Записи нет",
+                    "value": {
+                      "message": "Возрастная группа не найдена"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "401-0": {
+                    "summary": "Нет заголовка Authorization, токен недействителен или email не пользователя кабинета",
+                    "value": {
+                      "message": "Нет доступа"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Сбой workflow или сервиса",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorDTO"
+                },
+                "examples": {
+                  "500-0": {
+                    "summary": "Сбой workflow или сервиса",
+                    "value": {
+                      "message": "Внутренняя ошибка сервиса"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorDTO": {
+        "type": "object",
+        "description": "Ошибка",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Нет доступа"
+          }
+        }
+      },
+      "OutcomeDTO": {
+        "description": "Бизнес-исход",
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "example": "consents_required"
+          },
+          "message": {
+            "type": "string",
+            "example": "Требуется согласие"
+          }
+        }
+      },
+      "RiskProfileAcceptedDTO": {
+        "type": "object",
+        "description": "Запущен расчёт риск-профиля (или идёт расчёт этого ИНН)",
+        "properties": {
+          "workflowId": {
+            "type": "string",
+            "description": "Идентификатор сессии для GET",
+            "example": "lk-risk-profile-7707083893"
+          }
+        }
+      },
+      "AcceptedDTO": {
+        "type": "object",
+        "description": "Запуск принят",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Всегда accepted",
+            "example": "accepted"
+          }
+        }
+      },
+      "AccountLeadRequestDTO": {
+        "type": "object",
+        "description": "Заявка на лид",
+        "properties": {
+          "fio": {
+            "type": "string",
+            "description": "ФИО контакта",
+            "example": "Иванов Иван Иванович",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "description": "Телефон",
+            "example": "+79990000000",
+            "minLength": 1
+          },
+          "comment": {
+            "type": "string",
+            "description": "Комментарий; пустая строка передаётся как пустой комментарий",
+            "example": "Нужна консультация по договорам"
+          },
+          "subtype": {
+            "type": "string",
+            "description": "Сценарий лида: CONTACT_BROKER или POLICY_PROLONGATION",
+            "example": "CONTACT_BROKER",
+            "minLength": 1
+          },
+          "productIds": {
+            "type": "array",
+            "format": "int64",
+            "description": "Идентификатор продукта каталога; обязателен при POLICY_PROLONGATION",
+            "example": 10
+          },
+          "policyNumber": {
+            "type": "string",
+            "description": "Номер полиса; обязателен и непуст при POLICY_PROLONGATION",
+            "example": "КАСКО-2026/014"
+          },
+          "insuranceGroup": {
+            "type": "string",
+            "description": "Группа страхования полиса; только продление, пустая строка допустима",
+            "example": "транспорт"
+          },
+          "insuranceCompany": {
+            "type": "string",
+            "description": "Страховая компания полиса; только продление, пустая строка допустима",
+            "example": "СК Пример"
+          }
+        }
+      },
+      "ConsentDecisionDTO": {
+        "type": "object",
+        "description": "Решение по согласию",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Тип согласия; один тип — один элемент",
+            "enum": [
+              "PDN",
+              "CSI",
+              "ASSIGNMENT"
+            ],
+            "example": "PDN"
+          },
+          "consent": {
+            "type": "boolean",
+            "description": "Пользователь отметил согласие; для PDN допустимо только true",
+            "example": true
+          }
+        },
+        "required": [
+          "consent",
+          "type"
+        ]
+      },
+      "CompanyProfileAcceptedDTO": {
+        "type": "object",
+        "description": "Запущено обновление карточки",
+        "properties": {
+          "workflowId": {
+            "type": "string",
+            "description": "Идентификатор сессии для GET",
+            "example": "lk-company-profile-7706810730-6e3d144f"
+          }
+        }
+      },
+      "CreateAccountOsagoCompanyDTO": {
+        "type": "object",
+        "description": "Юридическое лицо",
+        "properties": {
+          "inn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/CreateAccountOsagoContactsDTO"
+          },
+          "shortName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fullName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ogrn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kpp": {
+            "type": "string",
+            "minLength": 1
+          },
+          "opf": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1
+          },
+          "identityDocument": {
+            "$ref": "#/components/schemas/CreateAccountOsagoIdentityDocumentDTO"
+          }
+        },
+        "required": [
+          "contacts",
+          "identityDocument",
+          "opf"
+        ]
+      },
+      "CreateAccountOsagoContactsDTO": {
+        "type": "object",
+        "description": "Контакты стороны; почта — из допуска",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "+74951234567",
+            "minLength": 1
+          }
+        }
+      },
+      "CreateAccountOsagoEntrepreneurDTO": {
+        "type": "object",
+        "description": "Индивидуальный предприниматель",
+        "properties": {
+          "inn": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/CreateAccountOsagoContactsDTO"
+          },
+          "shortName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fullName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "surname": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "patronymic": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1
+          },
+          "identityDocument": {
+            "$ref": "#/components/schemas/CreateAccountOsagoIdentityDocumentDTO"
+          }
+        },
+        "required": [
+          "birthDate",
+          "contacts",
+          "identityDocument"
+        ]
+      },
+      "CreateAccountOsagoIdentityDocumentDTO": {
+        "type": "object",
+        "description": "Документ стороны",
+        "properties": {
+          "typeGuid": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "series": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string",
+            "minLength": 1
+          },
+          "issueDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueDate",
+          "typeGuid"
+        ]
+      },
+      "CreateAccountOsagoInsuranceContractDTO": {
+        "type": "object",
+        "description": "Договор ОСАГО",
+        "properties": {
+          "startDateOsago": {
+            "type": "string",
+            "example": "2026-10-08"
+          },
+          "endDateOsago": {
+            "type": "string",
+            "example": "2027-10-07"
+          }
+        },
+        "required": [
+          "endDateOsago",
+          "startDateOsago"
+        ]
+      },
+      "CreateAccountOsagoInsurantDTO": {
+        "type": "object",
+        "description": "Страхователь: ровно одна ветка",
+        "properties": {
+          "company": {
+            "$ref": "#/components/schemas/CreateAccountOsagoCompanyDTO"
+          },
+          "entrepreneur": {
+            "$ref": "#/components/schemas/CreateAccountOsagoEntrepreneurDTO"
+          }
+        }
+      },
+      "CreateAccountOsagoOwnerDTO": {
+        "type": "object",
+        "description": "Собственник: ровно одна ветка",
+        "properties": {
+          "company": {
+            "$ref": "#/components/schemas/CreateAccountOsagoCompanyDTO"
+          },
+          "entrepreneur": {
+            "$ref": "#/components/schemas/CreateAccountOsagoEntrepreneurDTO"
+          },
+          "person": {
+            "$ref": "#/components/schemas/CreateAccountOsagoPersonDTO"
+          }
+        }
+      },
+      "CreateAccountOsagoPersonDTO": {
+        "type": "object",
+        "description": "Физическое лицо (собственник)",
+        "properties": {
+          "contacts": {
+            "$ref": "#/components/schemas/CreateAccountOsagoContactsDTO"
+          },
+          "surname": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "patronymic": {
+            "type": "string"
+          },
+          "birthDate": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "minLength": 1
+          },
+          "identityDocument": {
+            "$ref": "#/components/schemas/CreateAccountOsagoIdentityDocumentDTO"
+          }
+        },
+        "required": [
+          "birthDate",
+          "contacts",
+          "identityDocument"
+        ]
+      },
+      "CreateAccountOsagoPreviewRequestDTO": {
+        "type": "object",
+        "description": "Предрасчёт ОСАГО кабинета; email и согласия в теле запрещены",
+        "properties": {
+          "representative": {
+            "$ref": "#/components/schemas/CreateAccountOsagoRepresentativeDTO"
+          },
+          "insurant": {
+            "$ref": "#/components/schemas/CreateAccountOsagoInsurantDTO"
+          },
+          "vehicles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateAccountOsagoVehicleDTO"
+            },
+            "minItems": 1
+          },
+          "insuranceContract": {
+            "$ref": "#/components/schemas/CreateAccountOsagoInsuranceContractDTO"
+          }
+        },
+        "required": [
+          "insuranceContract",
+          "insurant",
+          "representative"
+        ]
+      },
+      "CreateAccountOsagoPreviousContractDTO": {
+        "type": "object",
+        "description": "Предыдущий договор ОСАГО",
+        "properties": {
+          "insuranceCompanyName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contractNumber": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contractEnd": {
+            "type": "string"
+          },
+          "insurancePremium": {
+            "type": "number"
+          },
+          "contractFranchise": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "contractEnd",
+          "insurancePremium"
+        ]
+      },
+      "CreateAccountOsagoRepresentativeContactsDTO": {
+        "type": "object",
+        "description": "Контакты представителя",
+        "properties": {
+          "surname": {
+            "type": "string",
+            "example": "Иванов",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Иван",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "example": "+74951234567",
+            "minLength": 1
+          }
+        }
+      },
+      "CreateAccountOsagoRepresentativeDTO": {
+        "type": "object",
+        "description": "Представитель; почта — из допуска",
+        "properties": {
+          "regionCode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Код региона; по нему ищется ГОСБ",
+            "example": 77
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/CreateAccountOsagoRepresentativeContactsDTO"
+          }
+        },
+        "required": [
+          "contacts",
+          "regionCode"
+        ]
+      },
+      "CreateAccountOsagoVehicleDTO": {
+        "type": "object",
+        "description": "Транспортное средство ОСАГО",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "example": "XTA00000000000001",
+            "maxLength": 17,
+            "minLength": 17
+          },
+          "registrationNumber": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "markId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mark": {
+            "type": "string",
+            "minLength": 1
+          },
+          "modelId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "markPrint": {
+            "type": "string"
+          },
+          "modelPrint": {
+            "type": "string"
+          },
+          "manufactureYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enginePower": {
+            "type": "number"
+          },
+          "color": {
+            "type": "string"
+          },
+          "isNew": {
+            "type": "boolean"
+          },
+          "maxMass": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "passengerSeatsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "document": {
+            "$ref": "#/components/schemas/CreateAccountOsagoVehicleDocumentDTO"
+          },
+          "region": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "usePurpose": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "isTrailerAllowed": {
+            "type": "boolean"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/CreateAccountOsagoOwnerDTO"
+          },
+          "ownerIsInsurant": {
+            "type": "boolean"
+          },
+          "previousContract": {
+            "$ref": "#/components/schemas/CreateAccountOsagoPreviousContractDTO"
+          }
+        },
+        "required": [
+          "category",
+          "document",
+          "enginePower",
+          "manufactureYear",
+          "markId",
+          "modelId",
+          "owner",
+          "ownerIsInsurant",
+          "usePurpose",
+          "vin"
+        ]
+      },
+      "CreateAccountOsagoVehicleDocumentDTO": {
+        "type": "object",
+        "description": "Документ ТС",
+        "properties": {
+          "typeGuid": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "series": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string",
+            "maxLength": 15,
+            "minLength": 0
+          },
+          "issueDate": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "issueDate",
+          "typeGuid"
+        ]
+      },
+      "AcceptedPreviewDTO": {
+        "type": "object",
+        "description": "Предрасчёт принят",
+        "properties": {
+          "workflowId": {
+            "type": "string",
+            "description": "Идентификатор workflow предрасчёта для GET и выбора предложения",
+            "example": "lk-calc-dms-3f2a9c0d1e4b5a6978c0d1e2f3a4b5c6-0f8e7d6c-5b4a-3928-1706-f5e4d3c2b1a0"
+          }
+        }
+      },
+      "CreateAccountOsagoSpecialVehicleDTO": {
+        "type": "object",
+        "description": "Спецтехника",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "example": "XTA00000000000001",
+            "maxLength": 17,
+            "minLength": 17
+          },
+          "chassisNumber": {
+            "type": "string"
+          },
+          "registrationNumber": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "markId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mark": {
+            "type": "string",
+            "minLength": 1
+          },
+          "modelId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "markPrint": {
+            "type": "string"
+          },
+          "modelPrint": {
+            "type": "string"
+          },
+          "manufactureYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "enginePower": {
+            "type": "number"
+          },
+          "document": {
+            "$ref": "#/components/schemas/CreateAccountOsagoVehicleDocumentDTO"
+          },
+          "usePurpose": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/CreateAccountOsagoOwnerDTO"
+          },
+          "ownerIsInsurant": {
+            "type": "boolean"
+          },
+          "previousContract": {
+            "$ref": "#/components/schemas/CreateAccountOsagoPreviousContractDTO"
+          }
+        },
+        "required": [
+          "category",
+          "document",
+          "enginePower",
+          "manufactureYear",
+          "markId",
+          "modelId",
+          "owner",
+          "ownerIsInsurant",
+          "usePurpose",
+          "vin"
+        ]
+      },
+      "CreateAccountOsagoSpecialVehicleRequestDTO": {
+        "type": "object",
+        "description": "Предрасчёт ОСАГО спецтехники кабинета; email и согласия в теле запрещены",
+        "properties": {
+          "representative": {
+            "$ref": "#/components/schemas/CreateAccountOsagoRepresentativeDTO"
+          },
+          "insurant": {
+            "$ref": "#/components/schemas/CreateAccountOsagoInsurantDTO"
+          },
+          "vehicles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateAccountOsagoSpecialVehicleDTO"
+            },
+            "minItems": 1
+          },
+          "insuranceContract": {
+            "$ref": "#/components/schemas/CreateAccountOsagoInsuranceContractDTO"
+          }
+        },
+        "required": [
+          "insuranceContract",
+          "insurant",
+          "representative"
+        ]
+      },
+      "SelectAccountOfferRequestDTO": {
+        "type": "object",
+        "description": "Выбор предложения",
+        "properties": {
+          "workflowId": {
+            "type": "string",
+            "description": "Идентификатор workflow из ответа POST предрасчёта",
+            "example": "lk-calc-dms-…",
+            "minLength": 1
+          },
+          "offerId": {
+            "type": "string",
+            "description": "Идентификатор выбранного предложения",
+            "example": "offer-1",
+            "minLength": 1
+          }
+        }
+      },
+      "CreateAccountKaskoContactsDTO": {
+        "type": "object",
+        "description": "Контакты страхователя; почта — из допуска",
+        "properties": {
+          "surname": {
+            "type": "string",
+            "example": "Иванов",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Иван",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "example": "+74951234567",
+            "minLength": 1
+          }
+        }
+      },
+      "CreateAccountKaskoInsuranceContractDTO": {
+        "type": "object",
+        "description": "Договор КАСКО",
+        "properties": {
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-08"
+          },
+          "endDate": {
+            "type": "string",
+            "description": "Без поля — год со дня начала минус день",
+            "example": "2027-10-07"
+          },
+          "insuranceCost": {
+            "type": "number",
+            "example": 1500000
+          }
+        },
+        "required": [
+          "insuranceCost",
+          "startDate"
+        ]
+      },
+      "CreateAccountKaskoInsurantDTO": {
+        "type": "object",
+        "description": "Страхователь КАСКО",
+        "properties": {
+          "companyType": {
+            "type": "string",
+            "example": "company",
+            "pattern": "^(person|company|entrepreneur|self_employed)$"
+          },
+          "inn": {
+            "type": "string",
+            "example": 7707083893,
+            "minLength": 1
+          },
+          "regionCode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Код региона; по нему ищется ГОСБ",
+            "example": 77
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/CreateAccountKaskoContactsDTO"
+          },
+          "product": {
+            "type": "string",
+            "example": "kasko",
+            "pattern": "^kasko$"
+          }
+        },
+        "required": [
+          "companyType",
+          "contacts",
+          "product",
+          "regionCode"
+        ]
+      },
+      "CreateAccountKaskoPreviewRequestDTO": {
+        "type": "object",
+        "description": "Предрасчёт КАСКО кабинета",
+        "properties": {
+          "insurant": {
+            "$ref": "#/components/schemas/CreateAccountKaskoInsurantDTO"
+          },
+          "vehicle": {
+            "$ref": "#/components/schemas/CreateAccountKaskoVehicleDTO"
+          },
+          "insuranceContract": {
+            "$ref": "#/components/schemas/CreateAccountKaskoInsuranceContractDTO"
+          },
+          "previousContract": {
+            "$ref": "#/components/schemas/CreateAccountKaskoPreviousContractDTO",
+            "description": "Не передаётся, если предыдущего договора нет"
+          }
+        },
+        "required": [
+          "insuranceContract",
+          "insurant",
+          "vehicle"
+        ]
+      },
+      "CreateAccountKaskoPreviousContractDTO": {
+        "type": "object",
+        "description": "Предыдущий договор КАСКО",
+        "properties": {
+          "insuranceCompanyName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contractNumber": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contractEnd": {
+            "type": "string"
+          },
+          "insuranceCost": {
+            "type": "number"
+          },
+          "insurancePremium": {
+            "type": "number"
+          },
+          "contractFranchise": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "contractEnd",
+          "insuranceCost",
+          "insurancePremium"
+        ]
+      },
+      "CreateAccountKaskoVehicleDTO": {
+        "type": "object",
+        "description": "Транспортное средство КАСКО",
+        "properties": {
+          "vin": {
+            "type": "string",
+            "example": "XTA00000000000001",
+            "maxLength": 17,
+            "minLength": 17
+          },
+          "registrationNumber": {
+            "type": "string",
+            "example": "А000АА77"
+          },
+          "category": {
+            "type": "string",
+            "description": "UUID категории ТС",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "markId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mark": {
+            "type": "string",
+            "example": "Lada",
+            "minLength": 1
+          },
+          "modelId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "model": {
+            "type": "string",
+            "example": "Vesta",
+            "minLength": 1
+          },
+          "markPrint": {
+            "type": "string"
+          },
+          "modelPrint": {
+            "type": "string"
+          },
+          "manufactureYear": {
+            "type": "integer",
+            "format": "int32",
+            "example": 2024
+          },
+          "enginePower": {
+            "type": "number",
+            "example": 106
+          },
+          "mileage": {
+            "type": "integer",
+            "format": "int32",
+            "example": 1000
+          },
+          "color": {
+            "type": "string"
+          },
+          "isNew": {
+            "type": "boolean"
+          },
+          "maxMass": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Для категории C"
+          },
+          "passengerSeatsCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Для категории D"
+          },
+          "document": {
+            "$ref": "#/components/schemas/CreateAccountKaskoVehicleDocumentDTO"
+          },
+          "isNotPersonal": {
+            "type": "boolean",
+            "description": "Без поля — false"
+          },
+          "region": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "usePurpose": {
+            "type": "string",
+            "description": "UUID цели использования",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          }
+        },
+        "required": [
+          "category",
+          "document",
+          "enginePower",
+          "manufactureYear",
+          "markId",
+          "mileage",
+          "modelId",
+          "usePurpose",
+          "vin"
+        ]
+      },
+      "CreateAccountKaskoVehicleDocumentDTO": {
+        "type": "object",
+        "description": "Документ ТС",
+        "properties": {
+          "typeGuid": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "number": {
+            "type": "string",
+            "example": "77УН123456",
+            "minLength": 1
+          },
+          "issueDate": {
+            "type": "string",
+            "example": "2024-05-01"
+          }
+        },
+        "required": [
+          "issueDate",
+          "typeGuid"
+        ]
+      },
+      "CreateAccountDmsPreviewEmployeeDTO": {
+        "type": "object",
+        "description": "Группа сотрудников",
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int32",
+            "example": 10
+          },
+          "ageGroupId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "kladrId": {
+            "type": "string",
+            "example": 7700000000000,
+            "maxLength": 13,
+            "minLength": 13
+          }
+        },
+        "required": [
+          "ageGroupId",
+          "count",
+          "kladrId"
+        ]
+      },
+      "CreateAccountDmsPreviewRequestDTO": {
+        "type": "object",
+        "description": "Предрасчёт ДМС кабинета",
+        "properties": {
+          "companyType": {
+            "type": "string",
+            "example": "company",
+            "pattern": "^(person|company|entrepreneur|self_employed)$"
+          },
+          "inn": {
+            "type": "string",
+            "description": "ИНН расчёта; допуск его не подменяет",
+            "example": 7707083893,
+            "minLength": 1
+          },
+          "regionCode": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Код региона; по нему ищется ГОСБ",
+            "example": 77
+          },
+          "surname": {
+            "type": "string",
+            "example": "Иванов",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string",
+            "example": "Иван",
+            "minLength": 1
+          },
+          "phone": {
+            "type": "string",
+            "example": "+74951234567",
+            "minLength": 1
+          },
+          "employees": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateAccountDmsPreviewEmployeeDTO"
+            },
+            "minItems": 1
+          },
+          "product": {
+            "type": "string",
+            "example": "dms",
+            "pattern": "^dms$"
+          }
+        },
+        "required": [
+          "companyType",
+          "product",
+          "regionCode"
+        ]
+      },
+      "InsuranceRecommendationDTO": {
+        "type": "object",
+        "description": "Страховая рекомендация",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "example": 501
+          },
+          "name": {
+            "type": "string",
+            "example": "Страхование перерыва"
+          },
+          "group": {
+            "$ref": "#/components/schemas/RecommendationGroupDTO"
+          }
+        }
+      },
+      "NonInsuranceRecommendationDTO": {
+        "type": "object",
+        "description": "Нестраховая рекомендация",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "example": 801
+          },
+          "name": {
+            "type": "string",
+            "example": "Резервная площадка"
+          },
+          "description": {
+            "type": "string",
+            "example": "Подготовить запасную площадку"
+          },
+          "group": {
+            "$ref": "#/components/schemas/RecommendationGroupDTO"
+          }
+        }
+      },
+      "RecommendationGroupDTO": {
+        "type": "object",
+        "description": "Группа риска рекомендации",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "example": 10
+          },
+          "name": {
+            "type": "string",
+            "example": "Остановка деятельности"
+          },
+          "priority": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Приоритет на момент расчёта",
+            "example": 1
+          }
+        }
+      },
+      "RecommendationsDTO": {
+        "type": "object",
+        "description": "Рекомендации; пустые списки, если рекомендаций нет",
+        "properties": {
+          "insurance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InsuranceRecommendationDTO"
+            }
+          },
+          "service": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceRecommendationDTO"
+            }
+          },
+          "nonInsurance": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NonInsuranceRecommendationDTO"
+            }
+          }
+        }
+      },
+      "RiskDTO": {
+        "type": "object",
+        "description": "Риск группы",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "example": 101
+          },
+          "name": {
+            "type": "string",
+            "example": "Перерыв в деятельности"
+          },
+          "description": {
+            "type": "string",
+            "description": "null, если значения нет",
+            "example": "Остановка ключевых процессов"
+          },
+          "linkedProduct": {
+            "type": "string",
+            "description": "null, если значения нет",
+            "example": "Страхование имущества"
+          }
+        }
+      },
+      "RiskGroupDTO": {
+        "type": "object",
+        "description": "Группа риска",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Код группы",
+            "example": "property"
+          },
+          "name": {
+            "type": "string",
+            "example": "Имущество"
+          },
+          "risks": {
+            "type": "array",
+            "description": "Пустой, если рисков нет",
+            "items": {
+              "$ref": "#/components/schemas/RiskDTO"
+            }
+          }
+        }
+      },
+      "RiskProfileDTO": {
+        "type": "object",
+        "description": "Риск-профиль и рекомендации (событие complete)",
+        "properties": {
+          "inn": {
+            "type": "string",
+            "example": 7707083893
+          },
+          "companyName": {
+            "type": "string",
+            "description": "Пустая строка, если имени нет",
+            "example": "Пример"
+          },
+          "okved": {
+            "type": "string",
+            "example": 62.01
+          },
+          "calculatedAt": {
+            "type": "string",
+            "description": "Момент публикации снимка, ISO-8601",
+            "example": "2026-09-30T12:00:00+03:00"
+          },
+          "riskGroups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RiskGroupDTO"
+            }
+          },
+          "recommendations": {
+            "$ref": "#/components/schemas/RecommendationsDTO"
+          }
+        }
+      },
+      "ServiceRecommendationDTO": {
+        "type": "object",
+        "description": "Сервисная рекомендация",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "format": "int32",
+            "example": 701
+          },
+          "name": {
+            "type": "string",
+            "example": "Аудит процессов"
+          },
+          "description": {
+            "type": "string",
+            "example": "Проверка непрерывности"
+          }
+        }
+      },
+      "ProfileInfoDTO": {
+        "type": "object",
+        "description": "Данные текущего пользователя из проверенного JWT",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Идентификатор пользователя: claim sub"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email из настроенного email claim"
+          },
+          "name": {
+            "type": "string",
+            "description": "Claim name; null, если непустой строки в токене нет"
+          },
+          "inn": {
+            "type": "string",
+            "description": "Claim inn; null, если непустой строки в токене нет"
+          }
+        }
+      },
+      "PolicyDTO": {
+        "type": "object",
+        "description": "Полис (событие complete — массив)",
+        "properties": {
+          "insuranceGroup": {
+            "type": "string",
+            "example": "транспорт"
+          },
+          "policyNumber": {
+            "type": "string",
+            "example": "КАСКО-2026/014"
+          },
+          "insuranceCompany": {
+            "type": "string",
+            "example": "СК Пример"
+          },
+          "totalInsurancePremium": {
+            "type": "number",
+            "description": "Общая премия, рубли",
+            "example": 84500.0
+          },
+          "validFrom": {
+            "type": "string",
+            "example": "2026-01-15T00:00:00+03:00"
+          },
+          "validTo": {
+            "type": "string",
+            "example": "2027-01-14T00:00:00+03:00"
+          },
+          "issueDate": {
+            "type": "string",
+            "example": "2026-01-10T10:30:00+03:00"
+          },
+          "daysToExpire": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Дней до окончания (Europe/Moscow); считает Policy Profile",
+            "example": 112
+          },
+          "productId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Идентификатор продукта каталога",
+            "example": 10
+          },
+          "insuranceType": {
+            "type": "string",
+            "example": "новый"
+          },
+          "paymentCount": {
+            "type": "integer",
+            "format": "int32",
+            "example": 4
+          },
+          "insuredAmount": {
+            "type": "number",
+            "description": "Страховая сумма, рубли",
+            "example": 1500000.0
+          },
+          "risks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyRiskDTO"
+            }
+          }
+        }
+      },
+      "PolicyRiskDTO": {
+        "type": "object",
+        "description": "Риск полиса",
+        "properties": {
+          "riskName": {
+            "type": "string",
+            "example": "Ущерб"
+          },
+          "insurancePrice": {
+            "type": "number",
+            "description": "Страховая сумма риска, рубли",
+            "example": 1500000.0
+          }
+        }
+      },
+      "UserConsentDTO": {
+        "type": "object",
+        "description": "Согласие пользователя",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Наименование согласия",
+            "example": "Поручение"
+          },
+          "status": {
+            "type": "boolean",
+            "description": "Согласие проставлено; false — в том числе на новую версию документа",
+            "example": false
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Обязательность",
+            "example": true
+          },
+          "date": {
+            "type": "string",
+            "description": "Дата и время согласия, ISO-8601 с часовым поясом; нет, если CRM не прислала",
+            "example": "2026-10-26T12:00:00+03:00"
+          }
+        }
+      },
+      "BrokerDTO": {
+        "type": "object",
+        "description": "Публичное имя брокера",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "example": "Иван"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Петров"
+          },
+          "email": {
+            "type": "string",
+            "example": "test@test.ru"
+          }
+        }
+      },
+      "CompanyProfileResponseDTO": {
+        "type": "object",
+        "description": "Карточка компании (событие complete)",
+        "properties": {
+          "inn": {
+            "type": "string",
+            "description": "ИНН",
+            "example": 7706810730
+          },
+          "name": {
+            "type": "string",
+            "description": "Наименование",
+            "example": "ООО «Страховой брокер Сбербанка»"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "ogrn": {
+            "type": "string",
+            "example": 1147746683468
+          },
+          "ceo": {
+            "type": "string",
+            "example": "Касин Олег Александрович"
+          },
+          "okved": {
+            "type": "string",
+            "example": 66.21
+          },
+          "gosb": {
+            "type": "string",
+            "example": 43
+          },
+          "regionCode": {
+            "type": "integer",
+            "format": "int32",
+            "example": 76
+          },
+          "assignedBroker": {
+            "$ref": "#/components/schemas/BrokerDTO",
+            "description": "Закреплённый брокер; null, если связи нет"
+          },
+          "additionalOkveds": {
+            "type": "array",
+            "description": "null — список не передан; пустой — кодов нет",
+            "items": {
+              "type": "string"
+            }
+          },
+          "legalAddresses": {
+            "type": "array",
+            "description": "null — список не передан; пустой — адресов нет",
+            "items": {
+              "$ref": "#/components/schemas/LegalAddressDTO"
+            }
+          }
+        }
+      },
+      "LegalAddressDTO": {
+        "type": "object",
+        "description": "Юридический адрес (Глобас). Даты — ISO-8601",
+        "properties": {
+          "fromDate": {
+            "type": "string",
+            "example": "2020-01-15T00:00:00Z"
+          },
+          "tillDate": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "example": "г. Москва"
+          },
+          "isAddressFalse": {
+            "type": "boolean",
+            "description": "Признак недостоверности",
+            "example": false
+          },
+          "falseAddressBeginDate": {
+            "type": "string"
+          },
+          "falseAddressEndDate": {
+            "type": "string"
+          },
+          "isMassAddressFTS": {
+            "type": "boolean",
+            "description": "Признак массового адреса ФНС",
+            "example": false
+          },
+          "massTillDate": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "description": "Источник адреса; всегда GLOBAS",
+            "example": "GLOBAS"
+          }
+        }
+      },
+      "CompanyProfileErrorDTO": {
+        "type": "object",
+        "description": "Ошибка карточки компании (событие error)",
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "SESSION_NOT_FOUND, COMPANY_NOT_FOUND, WORKFLOW_FAILED, INTERNAL_ERROR, INTERNAL_FALLBACK",
+            "example": "COMPANY_NOT_FOUND"
+          },
+          "message": {
+            "type": "string",
+            "example": "Компания с указанным ИНН не найдена в системе CRM."
+          }
+        }
+      },
+      "OsagoPreviewOfferDTO": {
+        "type": "object",
+        "description": "Предложение ОСАГО",
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "example": "offer-1"
+          },
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Только при error"
+          },
+          "insuranceCompanyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalCost": {
+            "type": "number"
+          }
+        }
+      },
+      "OsagoPreviewResponseDTO": {
+        "type": "object",
+        "description": "Предрасчёт ОСАГО (обычное и спецтехника)",
+        "properties": {
+          "calculationId": {
+            "type": "string",
+            "example": "calc-1"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OsagoPreviewOfferDTO"
+            }
+          }
+        }
+      },
+      "KaskoPreviewOfferDTO": {
+        "type": "object",
+        "description": "Предложение КАСКО",
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "example": "offer-1"
+          },
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "errorMessage": {
+            "type": "string",
+            "description": "Только при error"
+          },
+          "insuranceCompanyId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 7
+          },
+          "totalCost": {
+            "type": "number",
+            "example": 84500.5
+          }
+        }
+      },
+      "KaskoPreviewResponseDTO": {
+        "type": "object",
+        "description": "Предрасчёт КАСКО: пустой offers, если расчёт КАСКО не запускался",
+        "properties": {
+          "calculationId": {
+            "type": "string",
+            "example": "calc-1"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KaskoPreviewOfferDTO"
+            }
+          }
+        }
+      },
+      "DmsPreviewOfferDTO": {
+        "type": "object",
+        "description": "Предложение ДМС",
+        "properties": {
+          "offerId": {
+            "type": "string",
+            "example": "offer-1"
+          },
+          "status": {
+            "type": "string",
+            "example": "success"
+          },
+          "insuranceCompanyId": {
+            "type": "integer",
+            "format": "int64",
+            "example": 1
+          },
+          "kladrId": {
+            "type": "string",
+            "example": 7700000000000
+          },
+          "employeesCount": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Заполнено, когда группа с этим kladrId одна",
+            "example": 10
+          },
+          "totalCost": {
+            "type": "number",
+            "example": 150000.5
+          },
+          "lpuCount": {
+            "type": "integer",
+            "format": "int32",
+            "example": 12
+          },
+          "options": {
+            "type": "array",
+            "description": "Пусто при city_not_supported",
+            "example": [
+              "clinic"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DmsPreviewResponseDTO": {
+        "type": "object",
+        "description": "Предрасчёт ДМС: страница предложений и сводки по всему отобранному набору",
+        "properties": {
+          "calculationId": {
+            "type": "string",
+            "example": "calc-1"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DmsPreviewOfferDTO"
+            }
+          },
+          "summaryCities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DmsPreviewSummaryCityDTO"
+            }
+          },
+          "summary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DmsPreviewSummaryDTO"
+            }
+          }
+        }
+      },
+      "DmsPreviewSummaryCityDTO": {
+        "type": "object",
+        "description": "Сводка по страховой компании и городу",
+        "properties": {
+          "insuranceCompanyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "employeesCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kladrId": {
+            "type": "string"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalCost": {
+            "type": "number"
+          },
+          "lpuCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "DmsPreviewSummaryDTO": {
+        "type": "object",
+        "description": "Сводка по страховой компании: только предложения success",
+        "properties": {
+          "insuranceCompanyId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "employeesCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "totalCost": {
+            "type": "number"
+          },
+          "lpuCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerJwt": {
+        "type": "http",
+        "description": "Токен Keycloak (realm lk)",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

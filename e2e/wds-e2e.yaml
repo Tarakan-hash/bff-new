@@ -1,0 +1,6 @@
+# Только стенд: реальные workflow WDS, но CRM-активити дочернего сбора идут к FakeServices.
+temporal-properties:
+  workflow:
+    CompanyProfileCrmIntegrationWorkflow:
+      CrmBrokerActivity:
+        task-queue: e2e-company-crm-tq
