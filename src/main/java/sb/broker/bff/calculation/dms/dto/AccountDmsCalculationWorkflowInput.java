@@ -21,7 +21,8 @@ public record AccountDmsCalculationWorkflowInput(
             String name,
             String phone,
             List<EmployeeGroup> employees,
-            String product
+            String product,
+            String gosb
     ) {
     }
 

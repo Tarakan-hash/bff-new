@@ -109,6 +109,42 @@ class ConsentApiTest extends ApiTestSupport {
     }
 
     @Test
+    void submitAcceptsNewsletter() throws Exception {
+        accessIs(AccessOutcome.GRANTED);
+
+        mvc.perform(post("/api/v1/consents").with(user()).contentType(MediaType.APPLICATION_JSON).content("""
+                        [{"type":"PDN","consent":true},{"type":"NEWSLETTER","consent":true}]
+                        """))
+                .andExpect(status().isOk());
+
+        verify(workflows).execute(LkWorkflows.SUBMIT_USER_CONSENTS,
+                new SubmitUserConsentsInput(EMAIL, List.of(ConsentType.PDN, ConsentType.NEWSLETTER)));
+    }
+
+    @Test
+    void submitAcceptsDataEnvelope() throws Exception {
+        accessIs(AccessOutcome.GRANTED);
+
+        mvc.perform(post("/api/v1/consents").with(user()).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"data":[{"type":"PDN","consent":true},{"type":"CSI","consent":false}]}
+                        """))
+                .andExpect(status().isOk());
+
+        verify(workflows).execute(LkWorkflows.SUBMIT_USER_CONSENTS,
+                new SubmitUserConsentsInput(EMAIL, List.of(ConsentType.PDN)));
+    }
+
+    @Test
+    void submitRejectsIncompleteDecisionInDataEnvelope() throws Exception {
+        mvc.perform(post("/api/v1/consents").with(user()).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"data":[{"type":"PDN"}]}
+                        """))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(workflows);
+    }
+
+    @Test
     void submitWithoutPdnIs400() throws Exception {
         mvc.perform(post("/api/v1/consents").with(user()).contentType(MediaType.APPLICATION_JSON).content("""
                         [{"type":"PDN","consent":false}]

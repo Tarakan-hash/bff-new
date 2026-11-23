@@ -12,12 +12,13 @@ import java.util.List;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import sb.broker.bff.consent.dto.ConsentDecisionDTO;
+import sb.broker.bff.consent.dto.ConsentSubmissionDTO;
 import sb.broker.bff.consent.dto.UserConsentDTO;
 import sb.broker.bff.web.openapi.ConsentsRequired;
 import sb.broker.bff.web.openapi.ErrorExample;
@@ -42,7 +43,7 @@ public class ConsentController {
     @Operation(summary = "Файл согласия", description = "Доступен без обязательного согласия: нужен в поп-апе")
     @ApiResponse(responseCode = "200", description = "Файл; Content-Type из CRM или application/octet-stream",
             content = @Content(mediaType = "application/octet-stream"))
-    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Тип не PDN, CSI или ASSIGNMENT")
+    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Неизвестный тип согласия. Допустимы: PDN, CSI, ASSIGNMENT, NEWSLETTER")
     @ErrorExample(status = "404", message = "error.consent-file-not-found", when = "Файла нет")
     @GetMapping("/{type}/file")
     public ResponseEntity<byte[]> file(@PathVariable ConsentType type) {
@@ -51,21 +52,22 @@ public class ConsentController {
     }
 
     @Operation(summary = "Передать в CRM отмеченные согласия",
-            description = "Доступен без обязательного согласия. В CRM уходят только consent = true")
+            description = "Доступен без обязательного согласия. Принимает массив решений или объект с массивом в поле data. В CRM уходят только consent = true")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(content = @Content(
+            schema = @Schema(oneOf = {ConsentDecisionDTO[].class, ConsentSubmissionDTO.class})))
     @ApiResponse(responseCode = "200", description = "CRM приняла факты; тела нет")
     @ErrorExample(status = "400", message = "error.pdn-consent-required", when = "У PDN нет consent = true")
     @ErrorExample(status = "400", message = "error.invalid-consent-decisions", when = "Тип не указан или повторён")
     @ErrorExample(status = "400", message = "error.invalid-request", when = "Тело не разобрано")
     @PostMapping
-    public ResponseEntity<Void> submit(
-            @RequestBody List<@NotNull(message = "{error.invalid-consent-decisions}") @Valid ConsentDecisionDTO> decisions) {
-        consentService.submit(decisions);
+    public ResponseEntity<Void> submit(@Valid @RequestBody ConsentSubmissionDTO submission) {
+        consentService.submit(submission.data());
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "Отозвать согласие", description = "Отзыв уже отозванного согласия — тоже 200")
     @ApiResponse(responseCode = "200", description = "Согласие отозвано; тела нет")
-    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Тип не PDN, CSI или ASSIGNMENT")
+    @ErrorExample(status = "400", message = "error.invalid-consent-type", when = "Неизвестный тип согласия. Допустимы: PDN, CSI, ASSIGNMENT, NEWSLETTER")
     @ConsentsRequired
     @PostMapping("/{type}/recall")
     public ResponseEntity<Void> recall(@PathVariable ConsentType type) {

@@ -41,6 +41,6 @@ public class DmsCalculationService {
                 request.employees().stream()
                         .map(group -> new AccountDmsCalculationWorkflowInput.EmployeeGroup(group.count(), group.ageGroupId(), group.kladrId()))
                         .toList(),
-                request.product());
+                request.product(), request.gosb());
     }
 }

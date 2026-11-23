@@ -53,7 +53,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class CalculationApiTest extends ApiTestSupport {
 
     private static final String BODY = """
-            {"companyType":"company","inn":"7707083893","regionCode":77,"surname":"Иванов","name":"Иван",
+            {"companyType":"company","regionCode":77,"surname":"Иванов","name":"Иван",
              "phone":"+74951234567","employees":[{"count":10,"ageGroupId":1,"kladrId":"7700000000000"}],"product":"dms"}""";
 
     @Autowired
@@ -80,7 +80,8 @@ class CalculationApiTest extends ApiTestSupport {
 
         verify(workflows).startWithUpdate(eq(LkWorkflows.INITIATE_ACCOUNT_DMS_CALCULATION),
                 argThat((AccountDmsCalculationWorkflowInput input) -> input.email().equals(EMAIL)
-                        && input.request().employees().equals(List.of(new AccountDmsEmployee(10, 1L, "7700000000000")))
+                        && input.request().inn() == null
+                        && input.request().employees().equals(List.of(new AccountDmsCalculationWorkflowInput.EmployeeGroup(10, 1L, "7700000000000")))
                         && input.requestId() != null),
                 eq(owners.key(EMAIL)), any());
     }
@@ -110,7 +111,7 @@ class CalculationApiTest extends ApiTestSupport {
 
     @ParameterizedTest
     @ValueSource(strings = {
-            "\"email\":\"x@example.com\"", "\"consents\":[]", "\"product\":\"kasko\"", "\"employees\":[]",
+            "\"email\":\"x@example.com\"", "\"inn\":\"7707083893\"", "\"consents\":[]", "\"product\":\"kasko\"", "\"employees\":[]",
             "\"companyType\":\"bank\""})
     void rejectedBodyIs400WithoutTemporal(String field) throws Exception {
         String body = BODY.replaceFirst("\\{", "{" + field + ",");
@@ -384,7 +385,8 @@ class CalculationApiTest extends ApiTestSupport {
                         .content(BODY.replace("\"regionCode\":77", "\"regionCode\":77,\"gosb\":\"38\"")))
                 .andExpect(status().isAccepted());
         verify(workflows).startWithUpdate(eq(LkWorkflows.INITIATE_ACCOUNT_DMS_CALCULATION),
-                argThat((AccountDmsCalculationWorkflowInput input) -> "38".equals(input.request().gosb())),
+                argThat((AccountDmsCalculationWorkflowInput input) -> "38".equals(input.request().gosb())
+                        && input.request().inn() == null),
                 eq(owners.key(EMAIL)), any());
     }
 
