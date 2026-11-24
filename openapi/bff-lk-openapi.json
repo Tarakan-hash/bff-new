@@ -309,7 +309,7 @@
             }
           },
           "400": {
-            "description": "Тело не разобрано, нет fio, phone, subtype; у продления productId не целое или нет policyNumber",
+            "description": "Тело не разобрано или нет subtype; у продления нет policyNumber",
             "content": {
               "application/json": {
                 "schema": {
@@ -317,7 +317,7 @@
                 },
                 "examples": {
                   "400-0": {
-                    "summary": "Тело не разобрано, нет fio, phone, subtype; у продления productId не целое или нет policyNumber",
+                    "summary": "Тело не разобрано или нет subtype; у продления нет policyNumber",
                     "value": {
                       "message": "Запрос не разобран"
                     }
@@ -345,7 +345,7 @@
             }
           },
           "422": {
-            "description": "Сценарий закрыт, у CONTACT_BROKER поля полиса, у продления нет productId; region_not_found; gosb_not_found; product_not_found",
+            "description": "Сценарий закрыт, переданы запрещённые поля полиса, у продления нет продукта или productIds содержит null; region_not_found; gosb_not_found; product_not_found",
             "content": {
               "application/json": {
                 "schema": {
@@ -353,7 +353,7 @@
                 },
                 "examples": {
                   "422-0": {
-                    "summary": "Сценарий закрыт, у CONTACT_BROKER поля полиса, у продления нет productId",
+                    "summary": "Сценарий закрыт, переданы запрещённые поля полиса, у продления нет продукта или productIds содержит null",
                     "value": {
                       "message": "Сценарий создания лида недоступен"
                     }
@@ -4678,7 +4678,7 @@
           },
           "subtype": {
             "type": "string",
-            "description": "Сценарий лида: CONTACT_BROKER или POLICY_PROLONGATION",
+            "description": "Сценарий лида: CONTACT_BROKER, POLICY_PROLONGATION, PRODUCT_CATALOG или RECOMMENDATION",
             "example": "CONTACT_BROKER",
             "minLength": 1
           },

@@ -21,10 +21,11 @@ import sb.broker.bff.workflow.api.lead.SubmitAccountLeadResult;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -34,6 +35,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class LeadService {
+
+    private static final Set<String> PRODUCT_SELECTION_SCENARIOS = Set.of("PRODUCT_CATALOG", "RECOMMENDATION");
 
     private final AuthenticatedUser authenticatedUser;
     private final WorkflowGateway workflows;
@@ -46,13 +49,15 @@ public class LeadService {
      */
     public Optional<Outcome> submit(AccountLeadRequestDTO request) {
         LeadProperties.Scenario scenario = scenario(request);
-        SubmitAccountLeadInput input = scenario.policy()
-                ? new SubmitAccountLeadInput(authenticatedUser.email(), request.fio(), request.phone(),  (request.comment() == null ? "" : request.comment()) +
-                        getSelectedProductComment(request.productIds()),
-                request.subtype(), request.productIds().getFirst(), request.policyNumber(),
-                        request.insuranceGroup(), request.insuranceCompany())
-                : new SubmitAccountLeadInput(authenticatedUser.email(), request.fio(), request.phone(),
-                        request.comment(), request.subtype(), null, null, null, null);
+        String comment = request.comment();
+        if ((scenario.policy() || PRODUCT_SELECTION_SCENARIOS.contains(request.subtype()))
+                && request.productIds() != null && !request.productIds().isEmpty()) {
+            comment = Objects.requireNonNullElse(comment, "") + getSelectedProductComment(request.productIds());
+        }
+        SubmitAccountLeadInput input = new SubmitAccountLeadInput(authenticatedUser.email(), request.fio(), request.phone(),
+                comment, request.subtype(), scenario.policy() ? request.productIds().getFirst() : null,
+                scenario.policy() ? request.policyNumber() : null, scenario.policy() ? request.insuranceGroup() : null,
+                scenario.policy() ? request.insuranceCompany() : null);
 
         String workflowId = workflows.start(LkWorkflows.SUBMIT_ACCOUNT_LEAD, input, null);
         SubmitAccountLeadResult result;
@@ -73,18 +78,16 @@ public class LeadService {
         });
     }
 
-    private String getSelectedProductComment(ArrayList<Long> ids) {
-        StringBuilder comment = new StringBuilder("\nВыбранные продукты: ");
+    private String getSelectedProductComment(List<Long> ids) {
         Object data = productCatalog.read(CatalogDictionary.PRODUCTS, Map.of());
         List<CatalogProduct> products = mapper.convertValue(
                 data, new TypeReference<List<CatalogProduct>>() {});
         Map<Long, String> namesById = products.stream()
                 .collect(Collectors.toMap(CatalogProduct::id, CatalogProduct::name));
 
-        for (Long id : ids) {
-            comment.append(namesById.get(id)).append(", ");
-        }
-        return comment.toString();
+        return "\nВыбранные продукты: " + ids.stream()
+                .map(id -> Objects.requireNonNullElse(namesById.get(id), "ID " + id))
+                .collect(Collectors.joining(", "));
     }
 
     /**
@@ -99,8 +102,8 @@ public class LeadService {
         }
         if (scenario.isEmpty()
                 || !scenario.get().policy() && request.hasPolicyFields()
-                || scenario.get().policy() && (request.productIds() == null || request.productIds().isEmpty()
-                        || request.productIds().stream().anyMatch(java.util.Objects::isNull))) {
+                || request.productIds() != null && request.productIds().stream().anyMatch(Objects::isNull)
+                || scenario.get().policy() && (request.productIds() == null || request.productIds().isEmpty())) {
             throw new ServiceException(ErrorType.LEAD_SCENARIO_UNAVAILABLE);
         }
         return scenario.get();
