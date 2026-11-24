@@ -4,14 +4,24 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import sb.broker.bff.catalog.ProductCatalogService;
+import sb.broker.bff.lead.dto.CatalogProduct;
 import sb.broker.bff.support.ApiTestSupport;
 import sb.broker.bff.temporal.LkWorkflows;
 import sb.broker.bff.temporal.WorkflowAwaitTimeoutException;
 import sb.broker.bff.workflow.api.lead.LeadOutcome;
 import sb.broker.bff.workflow.api.lead.SubmitAccountLeadInput;
 import sb.broker.bff.workflow.api.lead.SubmitAccountLeadResult;
+import sb.broker.bff.workflow.api.catalog.CatalogDictionary;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -24,6 +34,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class LeadApiTest extends ApiTestSupport {
+
+    @MockitoBean
+    private ProductCatalogService productCatalog;
 
     private static final String WORKFLOW_ID = "lk-lead-1";
     private static final String LEAD = """
@@ -54,6 +67,70 @@ class LeadApiTest extends ApiTestSupport {
         verify(workflows).start(LkWorkflows.SUBMIT_ACCOUNT_LEAD, new SubmitAccountLeadInput(
                 EMAIL, "Иванов Иван Иванович", "+79990000000", "Нужна консультация",
                 "CONTACT_BROKER", null, null, null, null), null);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"PRODUCT_CATALOG", "RECOMMENDATION"})
+    void selectedProductsReachLeadWithoutContactFields(String subtype) throws Exception {
+        leadOutcomeIs(LeadOutcome.ACCEPTED);
+        when(productCatalog.read(CatalogDictionary.PRODUCTS, Map.of())).thenReturn(List.of(
+                new CatalogProduct(7L, "Грузы и перевозки"), new CatalogProduct(8L, "Строительство и монтаж")));
+        String comment = """
+                Добрый день!
+                Прошу связаться со мной для консультации по продуктам:
+
+                Грузы и перевозки
+                Пункт отправления:
+                Пункт назначения:
+                Номенклатура груза:
+                Стоимость груза:
+                Вид транспорта:
+
+                Строительство и монтаж
+                Объект строительства:
+                Стоимость проекта:""";
+        String body = JsonMapper.builder().build().writeValueAsString(Map.of(
+                "subtype", subtype, "productIds", List.of(7L, 8L), "comment", comment));
+
+        mvc.perform(post("/api/v1/leads").with(user()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.outcome").value("accepted"));
+
+        ArgumentCaptor<SubmitAccountLeadInput> input = ArgumentCaptor.forClass(SubmitAccountLeadInput.class);
+        verify(workflows).start(eq(LkWorkflows.SUBMIT_ACCOUNT_LEAD), input.capture(), isNull());
+        assertThat(input.getValue().subtype()).isEqualTo(subtype);
+        assertThat(input.getValue().fio()).isNull();
+        assertThat(input.getValue().phone()).isNull();
+        assertThat(input.getValue().productId()).isNull();
+        assertThat(input.getValue().policyNumber()).isNull();
+        assertThat(input.getValue().comment()).isEqualTo(comment
+                + "\nВыбранные продукты: Грузы и перевозки, Строительство и монтаж");
+    }
+
+    @Test
+    void selectedProductMissingInCatalogKeepsItsIdInComment() throws Exception {
+        leadOutcomeIs(LeadOutcome.ACCEPTED);
+        when(productCatalog.read(CatalogDictionary.PRODUCTS, Map.of()))
+                .thenReturn(List.of(new CatalogProduct(7L, "Грузы и перевозки")));
+
+        mvc.perform(post("/api/v1/leads").with(user()).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"subtype":"PRODUCT_CATALOG","productIds":[7,8]}
+                        """))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<SubmitAccountLeadInput> input = ArgumentCaptor.forClass(SubmitAccountLeadInput.class);
+        verify(workflows).start(eq(LkWorkflows.SUBMIT_ACCOUNT_LEAD), input.capture(), isNull());
+        assertThat(input.getValue().comment()).isEqualTo("\nВыбранные продукты: Грузы и перевозки, ID 8");
+    }
+
+    @Test
+    void selectedProductsCannotContainNull() throws Exception {
+        mvc.perform(post("/api/v1/leads").with(user()).contentType(MediaType.APPLICATION_JSON).content("""
+                        {"subtype":"PRODUCT_CATALOG","productIds":[7,null]}
+                        """))
+                .andExpect(status().isUnprocessableContent());
+
+        verifyNoInteractions(workflows, productCatalog);
     }
 
     @Test

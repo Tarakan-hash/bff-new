@@ -35,9 +35,9 @@ public class LeadController {
     @OutcomeExample(Outcome.GOSB_NOT_FOUND)
     @OutcomeExample(Outcome.PRODUCT_NOT_FOUND)
     @ErrorExample(status = "400", message = "error.invalid-request",
-            when = "Тело не разобрано, нет fio, phone, subtype; у продления productId не целое или нет policyNumber")
+            when = "Тело не разобрано или нет subtype; у продления нет policyNumber")
     @ErrorExample(status = "422", message = "error.lead-scenario-unavailable",
-            when = "Сценарий закрыт, у CONTACT_BROKER поля полиса, у продления нет productId")
+            when = "Сценарий закрыт, переданы запрещённые поля полиса, у продления нет продукта или productIds содержит null")
     @ConsentsRequired
     @PostMapping
     public ResponseEntity<OutcomeDTO> submit(@Valid @RequestBody AccountLeadRequestDTO request) {

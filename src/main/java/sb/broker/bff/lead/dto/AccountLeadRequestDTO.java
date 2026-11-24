@@ -12,7 +12,7 @@ import java.util.ArrayList;
 
 /**
  * Заявка на лид из кабинета. ИНН и email берутся из допуска, а не из тела.
- * Поля продукта и полиса есть только у продления.
+ * Поля полиса есть только у продления; выбранные продукты передаются списком.
  */
 @Schema(description = "Заявка на лид")
 public record AccountLeadRequestDTO(
@@ -27,7 +27,7 @@ public record AccountLeadRequestDTO(
         @Schema(description = "Комментарий; пустая строка передаётся как пустой комментарий",
                 example = "Нужна консультация по договорам", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
         String comment,
-        @Schema(description = "Сценарий лида: CONTACT_BROKER или POLICY_PROLONGATION", example = "CONTACT_BROKER")
+        @Schema(description = "Сценарий лида: CONTACT_BROKER, POLICY_PROLONGATION, PRODUCT_CATALOG или RECOMMENDATION", example = "CONTACT_BROKER")
         @NotBlank(message = "{error.invalid-request}") String subtype,
         @Schema(description = "Идентификаторы продуктов; прежнее поле productId с одним числом также поддерживается", example = "[10]",
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED)
